@@ -1,0 +1,95 @@
+#!/usr/bin/env Rscript
+
+library(ggplot2)
+source('scripts/theme_custom.R')
+
+base <- "./infocom-data-streaming/"
+plot_path <- "./plots"
+
+pattern <- "r0.7-f0-F0-K1000-C0-s100-a0.8-d10000-e15-p0-b10000-c50-wireless-m*"
+filenames <- Sys.glob(paste(base, "/", pattern, sep=""))
+
+
+if (exists("all_ho")){
+  rm(all_ho)
+}
+
+for (dir in filenames) {
+  if (grepl("-mgr", dir))
+      next
+  # Loop over each scenario
+  subdir_pattern <- paste(dir, "/*/", sep="")
+  for (subdir in Sys.glob(subdir_pattern)) {
+    # Loop over each experiment
+
+    fo <- read.table(paste(subdir, "forwarderOverhead.txt", sep=""))
+    names(fo) <- c("num_messages")
+
+    # Number of handover
+    ho <- read.table(paste(subdir, "producerOverhead.txt", sep=""))
+    if (length(names(ho)) == 3) {
+      # mapme
+      names(ho) <- c("time", "num_in", "num_iu")
+      ho$num_messages <- ho$num_in + ho$num_iu
+
+      ho$num_messages <- 0 # By default, IN=0 cost
+      if (nrow(subset(ho, num_iu == 1)) != nrow(fo)) {
+        cat("PROBLEME")
+          next
+      }
+      ho$num_messages[ho$num_iu == 1] <- fo$num_messages - 1 # Otherwise, IU cost
+
+
+      drops <- c("num_in", "num_iu")
+      ho <- ho[,!(names(ho) %in% drops)]     
+    } else { # 2
+      # anchor
+      names(ho) <- c("time", "num_messages")
+
+      ho$num_messages <- fo$num_messages
+    }
+    ho$num_handover <- 1:nrow(ho)
+    ho$Mobility   <- gsub(".*-m([^/]*?)/.*", "\\1", subdir)
+
+    if (!exists("all_ho")){
+        all_ho <- ho
+    } else {
+        all_ho<-rbind(all_ho, ho)
+    }
+    rm(ho)
+
+  }
+}
+
+all_ho$Mobility[all_ho$Mobility == "gr"] <- "GlobalRouting"
+all_ho$Mobility[all_ho$Mobility == "anchor"] <- "Anchor"
+all_ho$Mobility[all_ho$Mobility == "mapmein"] <- "Map-Me"
+all_ho$Mobility[all_ho$Mobility == "mapme"] <- "Map-Me-IU"
+
+#all_ho$Mobility <- as.factor(all_ho$Mobility)
+
+summary(all_ho)
+
+a <- with(all_ho, aggregate(all_ho[, c("num_messages")], list(num_handover=num_handover, Mobility=Mobility), mean)) #function(x) { c(MEAN=mean(x) , CI=qt(0.95/2+0.5, length(x))*(sd(x) / sqrt(length(x))) )}), simplify=FALSE)
+
+#for (i in seq(nrow(a),nrow(a)+21)) {
+#  a[i, ] <- c(i, 13, i-21, "GlobalRouting")
+#}
+a <- subset(a, num_handover < 16)
+
+# Anchor
+# Globalrouting
+
+outfile <- paste(plot_path, "/signalling-overhead.svg", sep="")
+cat(outfile)
+svg(outfile)
+ggplot(a, aes(num_handover, mean, group=Mobility, color=Mobility)) +
+  geom_line() +
+  geom_point() +
+  xlab("Number of handovers") + 
+  ylab("Average number of routers updated") + 
+  scale_y_continuous(breaks = seq(0, 15, by=1), lim=c(0,15)) +
+  theme_custom_br
+dev.off()
+
+  warnings()

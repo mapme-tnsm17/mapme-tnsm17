@@ -1,0 +1,22 @@
+# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+
+import inspect, os
+
+def build(bld):
+    # Get the module name from the file path so that this wscript can be generic
+    dir_name = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) 
+    module_name = os.path.basename(dir_name)
+
+    module = bld.create_ns3_module(module_name, ['core', 'ndnSIM'])
+
+    src = os.listdir(dir_name)
+
+    module.source = [s for s in src if s.endswith('.cpp') or s.endswith('.cc')]
+
+    module_test = bld.create_ns3_module_test_library(module_name)
+    module_test.source = [
+    ]
+
+    headers = bld(features='ns3header')
+    headers.module = module_name
+    headers.source = [s for s in src if s.endswith('.hpp') or s.endswith('.h')]

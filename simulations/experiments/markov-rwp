@@ -1,0 +1,35 @@
+# Impact of load
+RUNS=10
+
+duration 10000
+capacity 10000000
+buffer_size 10000
+delay 5
+#cell_size
+
+rho 0
+rho_fraction_out 0
+rho_fraction_elastic 0
+
+num_permanent_streaming 1
+num_permanent_elastic 0
+num_cp_couples 1
+
+# chunk_size DEFAULT
+
+# sigma NA
+
+streaming_rate 1000000
+#streaming_duration 30 DEFAULT
+
+#alpha DEFAULT # DEFAULT NO IMPACT
+#catalog_size # DEFAULT NO IMPACT
+#cs_fraction # DEFAULT NO IMPACT
+
+mobility_scheme gr anchor mapme-iu kite
+mobility_model markov-rwp
+speed 15
+pause 5
+topology cycle grid-2d hypercube expander erdos-renyi regular watts-strogatz small-world barabasi-albert
+
+#tu DEFAULT

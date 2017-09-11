@@ -1,0 +1,234 @@
+# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+
+VERSION='0.1'
+APPNAME='template'
+
+from waflib import Build, Logs, Options, TaskGen
+import subprocess
+import os
+
+def options(opt):
+    opt.load(['compiler_c', 'compiler_cxx'])
+    opt.load(['default-compiler-flags',
+              'boost', 'ns3'],
+             tooldir=['.waf-tools'])
+
+    opt.add_option('--logging',action='store_true',default=True,dest='logging',help='''enable logging in simulation scripts''')
+    opt.add_option('--run',
+                   help=('Run a locally built program; argument can be a program name,'
+                         ' or a command starting with the program name.'),
+                   type="string", default='', dest='run')
+    opt.add_option('--visualize',
+                   help=('Modify --run arguments to enable the visualizer'),
+                   action="store_true", default=False, dest='visualize')
+    opt.add_option('--command-template',
+                   help=('Template of the command used to run the program given by --run;'
+                         ' It should be a shell command string containing %s inside,'
+                         ' which will be replaced by the actual program.'),
+                   type="string", default=None, dest='command_template')
+    opt.add_option('--mpi',
+                   help=('Run in MPI mode'),
+                   type="string", default="", dest="mpi")
+    opt.add_option('--time',
+                   help=('Enable time for the executed command'),
+                   action="store_true", default=False, dest='time')
+
+    # BEGIN EXTENSIONS (1/2)
+    #
+    # We need to duplicate here everything that is present in ndnSIM in order
+    # to use all includes properly.
+
+    opt.add_option('--without-mapme', help='Disable MAPME mobility support',
+        dest='without_mapme', action='store_true', default=False)
+    opt.add_option('--without-kite', help='Disable KITE mobility support',
+        dest='without_kite', action='store_true', default=False)
+    opt.add_option('--without-anchor', help='Disable anchor mobility support',
+        dest='without_anchor', action='store_true', default=False)
+    opt.add_option('--without-path-labelling', help='Disable path labelling',
+        dest='without_path_labelling', action='store_true', default=False)
+    opt.add_option('--without-raaqm', help='Disable RAAQM congestion control',
+        dest='without_raaqm', action='store_true', default=False)
+    opt.add_option('--without-conf-file', help='Disable configuration file for forwarder',
+        dest='without_conf_file', action='store_true', default=False)
+    opt.add_option('--without-lb-strategy', help='Disable load balance strategy',
+        dest='without_lb_strategy', action='store_true', default=False)
+    opt.add_option('--without-fix-random', help='Disable fix for randomness',
+        dest='without_fix_random', action='store_true', default=False)
+    opt.add_option('--with-hop-count', help='Enable hop count',
+        dest='with_hop_count', action='store_true', default=False)
+    opt.add_option('--without-unicast-ethernet', help='Enable unicast ethernet support',
+        dest='without_unicast_ethernet', action='store_true', default=False)
+    opt.add_option('--without-bugfixes', help='Disable bugfixes',
+        dest='without_bugfixes', action='store_true', default=False)
+    opt.add_option('--without-cache-extensions', help='Disable cache extensions',
+        dest='without_cache_extensions', action='store_true', default=False)
+    opt.add_option('--without-fib-extensions', help='Disable FIB extensions',
+        dest='without_fib_extensions', action='store_true', default=False)
+    opt.add_option('--without-wldr', help='Disable WLDR',
+	dest='without_wldr', action='store_true', default=False)
+    opt.add_option('--without-mldr', help='Disable MLDR',
+	dest='without_mldr', action='store_true', default=False)
+
+
+    # Simulation-specific extensions
+    opt.add_option('--without-network-dynamics', help='Disable additions to support dynamic simulations',
+        dest='without_network_dynamics', action='store_true', default=False)
+    opt.add_option('--without-face-up-down', help='Disable face up/down support',
+        dest='without_face_up_down', action='store_true', default=False)
+    opt.add_option('--without-globalrouting-updates', help='Disable GlobalRouting updates',
+        dest='without_globalrouting_updates', action='store_true', default=False)
+
+    # END EXTENSIONS (1/2)
+
+MANDATORY_NS3_MODULES = ['core', 'network', 'point-to-point', 'applications', 'mobility', 'ndnSIM']
+OTHER_NS3_MODULES = ['antenna', 'aodv', 'bridge', 'brite', 'buildings', 'click', 'config-store', 'csma', 'csma-layout', 'dsdv', 'dsr', 'emu', 'energy', 'fd-net-device', 'flow-monitor', 'internet', 'lte', 'mesh', 'mpi', 'netanim', 'nix-vector-routing', 'olsr', 'openflow', 'point-to-point-layout', 'propagation', 'spectrum', 'stats', 'tap-bridge', 'topology-read', 'uan', 'virtual-net-device', 'visualizer', 'wifi', 'wimax']
+
+def configure(conf):
+    conf.load(['compiler_c', 'compiler_cxx',
+               'default-compiler-flags',
+               'boost', 'ns3'])
+
+    if not os.environ.has_key('PKG_CONFIG_PATH'):
+        os.environ['PKG_CONFIG_PATH'] = ':'.join([
+            '/usr/local/lib/pkgconfig',
+            '/opt/local/lib/pkgconfig'])
+    
+    # We need a mix of those both solutions to have things work
+    # http://redmine.named-data.net/issues/2664
+    # https://github.com/yoursunny/ndnSIM-scenario-template/commit/25b1abbbd3f227a4421cbda7e167bc6937bbcff5
+
+    conf.check_boost(lib='system iostreams')
+    boost_version = conf.env.BOOST_VERSION.split('_')
+    if int(boost_version[0]) < 1 or int(boost_version[1]) < 53:
+        Logs.error ("ndnSIM requires at least boost version 1.53")
+        Logs.error ("Please upgrade your distribution or install custom boost libraries (http://ndnsim.net/faq.html#boost-libraries)")
+        exit (1)
+
+    if conf.options.debug:
+        conf.check_cfg(package='libns3-dev-ndnSIM-debug', args=['--cflags', '--libs'],
+                       uselib_store='NDNSIM', mandatory=True)
+    else:
+        conf.check_cfg(package='libns3-dev-ndnSIM-optimized', args=['--cflags', '--libs'],
+                       uselib_store='NDNSIM', mandatory=True)
+
+
+    try:
+        conf.check_ns3_modules(MANDATORY_NS3_MODULES)
+        for module in OTHER_NS3_MODULES:
+            conf.check_ns3_modules(module, mandatory = False)
+    except:
+        Logs.error ("NS-3 or one of the required NS-3 modules not found")
+        Logs.error ("NS-3 needs to be compiled and installed somewhere.  You may need also to set PKG_CONFIG_PATH variable in order for configure find installed NS-3.")
+        Logs.error ("For example:")
+        Logs.error ("    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH ./waf configure")
+        conf.fatal ("")
+
+    if conf.options.debug:
+        conf.define ('NS3_LOG_ENABLE', 1)
+        conf.define ('NS3_ASSERT_ENABLE', 1)
+
+    if conf.env.DEST_BINFMT == 'elf':
+        # All ELF platforms are impacted but only the gcc compiler has a flag to fix it.
+        if 'gcc' in (conf.env.CXX_NAME, conf.env.CC_NAME):
+            conf.env.append_value('SHLIB_MARKER', '-Wl,--no-as-needed')
+
+    if conf.options.logging:
+        conf.define('NS3_LOG_ENABLE', 1)
+        conf.define('NS3_ASSERT_ENABLE', 1)
+
+    conf.env['WITH_MAPME']            = not Options.options.without_mapme
+    conf.env['WITH_KITE']             = not Options.options.without_kite
+    conf.env['WITH_ANCHOR']           = not Options.options.without_anchor
+    conf.env['WITH_PATH_LABELLING']   = not Options.options.without_path_labelling
+    conf.env['WITH_RAAQM']            = not Options.options.without_raaqm
+    conf.env['WITH_CONF_FILE']        = not Options.options.without_conf_file
+    conf.env['WITH_LB_STRATEGY']      = not Options.options.without_lb_strategy
+    conf.env['WITH_FIX_RANDOM']       = not Options.options.without_fix_random
+    conf.env['WITH_HOP_COUNT']        = False # existing feature in ndnSIM
+    conf.env['WITH_UNICAST_ETHERNET'] = not Options.options.without_unicast_ethernet
+    conf.env['WITH_BUGFIXES']         = not Options.options.without_bugfixes
+    conf.env['WITH_CACHE_EXTENSIONS'] = not Options.options.without_cache_extensions
+    conf.env['WITH_FIB_EXTENSIONS']   = not Options.options.without_fib_extensions
+    conf.env['WITH_WLDR']	      = not Options.options.without_wldr
+    conf.env['WITH_MLDR']	      = not Options.options.without_mldr
+
+    conf.env['WITH_NETWORK_DYNAMICS'] = not Options.options.without_network_dynamics
+    conf.env['WITH_FACE_UP_DOWN']     = not Options.options.without_face_up_down
+    conf.env['WITH_GLOBALROUTING_UPDATES'] = not Options.options.without_globalrouting_updates
+
+    extensions = ['MAPME', 'KITE', 'ANCHOR', 'PATH_LABELLING', 'RAAQM', 'CONF_FILE',
+                  'LB_STRATEGY', 'FIX_RANDOM', 'HOP_COUNT', 'UNICAST_ETHERNET',
+                  'BUGFIXES', 'CACHE_EXTENSIONS', 'FIB_EXTENSIONS', 'WLDR', 'MLDR',
+                  'NETWORK_DYNAMICS', 'FACE_UP_DOWN', 'GLOBALROUTING_UPDATES']
+
+    for extension in extensions:
+      if conf.env['WITH_%s' % extension]:
+        conf.env.append_value('DEFINES', extension)
+        conf.env.append_value('DEFINES', 'NDN_CXX_%s' % extension)
+        conf.msg('Compilation flag %s set' % extension, 'yes')
+      else:
+        conf.msg('Compilation flag %s set' % extension, 'not', color='YELLOW')
+
+    # END EXTENSIONS (2/2)
+
+    # Simulation-specific code
+    conf.env.append_value('DEFINES', 'NDNSIM')
+
+    # Flag to determine whether we link against ndnSIM library, or run program
+    # from within ns
+    conf.define('NS3_AS_LIB', 1)
+
+def build (bld):
+    #deps = 'NDNSIM ' + ' '.join (['ns3_'+dep for dep in MANDATORY_NS3_MODULES + OTHER_NS3_MODULES]).upper ()
+    deps = 'BOOST BOOST_IOSTREAMS NDN_CXX NDNSIM ' + ' '.join (['ns3_'+dep for dep in MANDATORY_NS3_MODULES + OTHER_NS3_MODULES]).upper ()
+    common = bld.objects (
+        target = "extensions",
+        features = ["cxx"],
+        source = bld.path.ant_glob(['extensions/**/*.cc', 'extensions/**/*.cpp']),
+        use = deps,
+        )
+
+    for scenario in bld.path.ant_glob (['scenario/*.cc']):
+        name = str(scenario)[:-len(".cc")]
+        app = bld.program (
+            target = name,
+            features = ['cxx'],
+            source = [scenario],
+            use = deps + " extensions",
+            includes = "extensions"
+            )
+    for scenario in bld.path.ant_glob (['scenario/*.cpp']):
+        name = str(scenario)[:-len(".cpp")]
+        app = bld.program (
+            target = name,
+            features = ['cxx'],
+            source = [scenario],
+            use = deps + " extensions",
+            includes = "extensions"
+            )
+
+def shutdown (ctx):
+    if Options.options.run:
+        visualize=Options.options.visualize
+        mpi = Options.options.mpi
+
+        if mpi and visualize:
+            Logs.error ("You cannot specify --mpi and --visualize options at the same time!!!")
+            return
+
+        argv = Options.options.run.split (' ');
+        argv[0] = "build/%s" % argv[0]
+
+        if visualize:
+            argv.append ("--SimulatorImplementationType=ns3::VisualSimulatorImpl")
+
+        if mpi:
+            argv.append ("--SimulatorImplementationType=ns3::DistributedSimulatorImpl")
+            argv.append ("--mpi=1")
+            argv = ["openmpirun", "-np", mpi] + argv
+            Logs.error (argv)
+
+        if Options.options.time:
+            argv = ["time"] + argv
+
+        return subprocess.call (argv)

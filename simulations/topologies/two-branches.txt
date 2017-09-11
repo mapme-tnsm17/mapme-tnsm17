@@ -1,0 +1,39 @@
+# topo-two-branches.txt
+
+# any empty lines and lines starting with '#' symbol is ignored
+#
+# The file should contain exactly two sections: router and link, each starting with the corresponding keyword
+#
+# router section defines topology nodes and their relative positions (e.g., to use in visualizer)
+router
+
+# node  comment     yPos    xPos
+LeftRoot    NA      4       2
+MidTop      NA      6       3
+MidBottom   NA      2       3
+RightTop    NA      6       4
+RightBottom NA      2       4
+
+NodeC       NA      4       1
+NodeP1a     NA      7       5
+NodeP1b     NA      3       5
+# Note that `node` can be any string. It is possible to access to the node by name using Names::Find, see examples.
+
+# link section defines point-to-point links between nodes and characteristics of these links
+link
+
+# Each line should be in the following format (only first two are required, the rest can be omitted)
+# srcNode   dstNode     bandwidth   metric  delay   queue
+# bandwidth: link bandwidth
+# metric: routing metric
+# delay:  link delay
+# queue:  MaxPackets for transmission queue on the link (both directions)
+LeftRoot    MidTop      100Mbps      1       10ms    100
+LeftRoot    MidBottom   10Mbps       1       10ms    100
+MidTop      RightTop    50Mbps       1       10ms    100
+MidBottom   RightBottom 100Mbps      1       10ms    100
+
+RightTop    NodeP1a     100Mbps      1       10ms    100
+RightBottom NodeP1b     100Mbps      1       10ms    100
+NodeC       LeftRoot    100Mbps      1       10ms    100
+

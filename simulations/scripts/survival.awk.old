@@ -1,0 +1,27 @@
+FNR==NR {
+    if ($3 == "prefix_down") {
+        mappop["/"$3"/"$4]=$1; 
+        maprank["/"$3"/"$4]=NR;
+    }
+    next
+}
+
+{
+    if ($1 > 500) {
+        if ($2=="HIT") {
+            miss[$3] = 500
+        } else {
+            if (!miss[$3] || miss[$3]==500) {
+                miss[$3] = $1-500
+            }
+        }
+    }
+} 
+
+END {
+    for (x in miss) {
+        if (mappop[x]) {
+            print x, maprank[x], mappop[x], miss[x]
+        }       
+    }
+}

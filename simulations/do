@@ -1,0 +1,432 @@
+#!/bin/bash
+
+# directory names can be used as keys for the simulation results
+
+#-------------------------------------------------------------------------------
+# Configuration
+#-------------------------------------------------------------------------------
+
+DEFAULT_NDNSIM_DIR="$HOME/bin"
+
+# See .waf-1.8.12-*/waflib/Utils.py, function lib64()
+ARCH=$(test -d /usr/lib64 -a ! -d /usr/lib32 && echo "64" || echo "")
+
+DATA_PATH=./data
+SCENARIO=synthetic
+DEFAULT_RUNS=1
+
+MAX_PROCESS=$(grep -c ^processor /proc/cpuinfo)
+
+FILE="tmp/get_directory"
+FILECMD="$FILE --quiet=true"
+
+#-------------------------------------------------------------------------------
+# Setup (lightweight version of setup.sh)
+#-------------------------------------------------------------------------------
+
+cmd="optimized" # "${1:-optimized}"
+flavour="mapme" # "${2:-default}"
+
+if [[ "$NDNSIM_DIR" == "" ]]; then
+  #>&2 echo "I: No NDNSIM_DIR environment variable. Defaulting to $DEFAULT_NDNSIM_DIR"
+  NDNSIM_DIR=$DEFAULT_NDNSIM_DIR
+fi
+
+if [[ ! -d $NDNSIM_DIR ]]; then
+  >&2 cat <<EOF
+E: ndnSIM does not seem installed in $NDNSIM_DIR. Please set up the
+   NDNSIM_DIR environment variable if you have installed it in another
+   location
+EOF
+  exit
+fi
+
+BASE="$NDNSIM_DIR/root/$flavour"
+if [[ ! -d $BASE ]]; then
+    >&2 echo "Base directory for ndnSIM not found [$BASE]. Please check your installation."
+    exit
+fi
+
+PWD=$(pwd)
+
+export LD_LIBRARY_PATH=$BASE/lib$ARCH
+export PKG_CONFIG_PATH=$BASE/lib$ARCH/pkgconfig
+export PYTHONPATH=$BASE/usr/lib$ARCH/python2.7/dist-packages
+export R_INCLUDE_DIR=$PWD/scripts/helpers/
+
+#-------------------------------------------------------------------------------
+# Helpers
+#-------------------------------------------------------------------------------
+
+BUG_MAPME="it != tfibEntry->pendingUpdates.end()"
+BUG_WIFI="terminate called"
+
+function get_parameter_descriptions()
+{
+# long parameter / desc
+  grep AddValue extensions/options.cpp | sed -- "s/.*AddValue.*(\"\([^\"]*\)\", \"\([^\"]*\)\".*/\1 \2/"
+}
+
+function get_parameters()
+{
+  sed "s/.*\"-\(.*\)\" << \(.*\).*/\2 \1/;tx;d;:x" extensions/options.cpp | grep -v "0 tu" | sed "s/_s / /g"
+}
+
+function get_default_parameters()
+{
+  sed "s/  , \([^()]*\)(\([^()]*\)).*/\1 \2/;tx;d;:x" extensions/options.cpp
+}
+
+#
+# This is already done by the options.cpp file. Could we run C code to dump ?
+#
+function get_scenario_parameters()
+{
+  EXPERIMENT=$1
+
+  # Store default parameters into associative array
+  declare -A map_defaults
+  while read -r parameter default; do
+    [[ $parameter =~ "//" ]] && continue
+    map_defaults[$parameter]=$default
+  done < <(get_default_parameters)
+
+  # Iteratively generate directory names from scenario parameters (incl. default
+  # values)
+  declare -a input
+  declare -a output=("")
+
+  while read -r line
+  do
+    [[ $line == \#* ]] && continue
+    [[ $line == "" ]] && continue
+
+    [[ $line =~ RUNS=(.*) ]] && line="RngRun $(seq 1 ${BASH_REMATCH[1]})"
+
+    arr=($line)
+
+    unset input; declare -a input
+    for k in "${!output[@]}"; do
+      input[$k]=${output[$k]}
+    done
+    # we recreate an output array with all combinations = input & arr
+    unset output; declare -a output
+
+    # XXX missing default parameters
+
+    key=${arr[0]}
+    for i in "${input[@]}"; do
+      for value in "${arr[@]:1}"; do
+        output+=("$i --$key=$value")
+      done
+    done
+#XXX#    unset 'map_defaults[$k]'
+
+  done < $EXPERIMENT
+
+#XXX#  for key in "${!map_defaults[@]}"; do
+#XXX#    for output in "${output[@]}"; do
+#XXX#      output+=(" --$key=${map_defaults[$key]}")
+#XXX#    done
+#XXX#  done
+
+  # Adding missing default parameters
+
+  for dir in "${output[@]}"; do
+    echo $dir
+  done
+}
+
+function get_run_parameters()
+{
+  while read parameters; do
+    for run in $(seq 1 $DEFAULT_RUNS); do
+      echo $parameters #--RngRun=$run
+    done
+  done < <(get_scenario_parameters $1)
+}
+
+
+# XXX use get_scenario_parameters + test.cpp
+function get_scenario_directories()
+{
+  while read parameters; do
+      dirname $(get_simulation_directory "$parameters")
+  done < <(get_scenario_parameters $1)
+
+# DEPRECATED|  EXPERIMENT=$1
+# DEPRECATED|
+# DEPRECATED|  # Store parameters into associative array
+# DEPRECATED|  declare -A map_parameters
+# DEPRECATED|  while read -r parameter initial; do
+# DEPRECATED|    map_parameters[$parameter]=$initial
+# DEPRECATED|  done < <(get_parameters)
+# DEPRECATED|
+# DEPRECATED|  # Store default parameters into associative array
+# DEPRECATED|  declare -A map_defaults
+# DEPRECATED|  while read -r parameter default; do
+# DEPRECATED|    map_defaults[$parameter]=$default
+# DEPRECATED|  done < <(get_default_parameters)
+# DEPRECATED|
+# DEPRECATED|  # Iteratively generate directory names from scenario parameters (incl. default
+# DEPRECATED|  # values)
+# DEPRECATED|  declare -a input
+# DEPRECATED|  declare -a output=("$SCENARIO")
+# DEPRECATED|
+# DEPRECATED|  while read -r line
+# DEPRECATED|  do
+# DEPRECATED|    [[ $line == \#* ]] && continue
+# DEPRECATED|    [[ $line == "" ]] && continue
+# DEPRECATED|
+# DEPRECATED|    [[ $line == RUNS ]] && continue # XXX N runs for the scenario
+# DEPRECATED|
+# DEPRECATED|    echo "LINE=" $line
+# DEPRECATED|    arr=($line)
+# DEPRECATED|    echo "ARR=$arr"
+# DEPRECATED|
+# DEPRECATED|    unset input; declare -a input
+# DEPRECATED|    for k in "${!output[@]}"; do
+# DEPRECATED|      input[$k]=${output[$k]}
+# DEPRECATED|    done
+# DEPRECATED|    unset output; declare -a output
+# DEPRECATED|
+# DEPRECATED|    # XXX missing default parameters
+# DEPRECATED|
+# DEPRECATED|    key_long=${arr[0]}
+# DEPRECATED|    echo "KEYLONG=$key_long"
+# DEPRECATED|    key=${map_parameters[$key_long]}
+# DEPRECATED|    echo "KEY=$key"
+# DEPRECATED|    for i in "${input[@]}"; do
+# DEPRECATED|      echo "I=$i"
+# DEPRECATED|      for value in "${arr[@]:1}"; do
+# DEPRECATED|        output+=("$i-$key$value")
+# DEPRECATED|        echo "NEW $i-$key$value"
+# DEPRECATED|      done
+# DEPRECATED|    done
+# DEPRECATED|
+# DEPRECATED|  done < $EXPERIMENT
+# DEPRECATED|
+# DEPRECATED|  for dir in "${output[@]}"; do
+# DEPRECATED|    echo "DIR", $dir
+# DEPRECATED|    echo $dir
+# DEPRECATED|  done
+
+}
+
+# XXX We should hash all dependencies !
+# XXX Not sufficient since $(./setup.sh) seems needed
+# XXX We need the directory name without the run #
+function check_get_directory()
+{
+  SNIPPET='''
+/* Without this include, we get the following error:
+ *   msg="Could not set default value for ns3::DropTailQueue::MaxPackets",
+ *   file=../../../src/core/model/config.cc, line=779
+ *   terminate called without an active exception
+ *   Aborted (core dumped)
+ */
+#include "ns3/ndnSIM-module.h"
+#include "options.hpp"
+
+int
+main(int argc, char* argv[])
+{
+    ns3::ndn::Options options;
+    options.ParseCmdline(argc, argv);
+    std::string result_path = options.ManageResultPath(false);
+		std::cout << result_path << std::endl;
+}
+'''
+  HASHFILE="$FILE.md5"
+  EXPECTED_HASH=$(echo $SNIPPET | md5sum | cut -d " " -f 1)
+
+  [[ -s $HASHFILE ]] && [[ -s $FILE ]] && HASH=$(<$HASHFILE)
+  if [[ "$HASH" != "$EXPECTED_HASH" ]]; then
+    echo "$HASH != $EXPECTED_HASH"
+    TEMP=$(mktemp --suffix=.cpp)
+    echo "$SNIPPET" > $TEMP
+
+    >&2 echo "I: Compiling $FILE.cpp"
+    g++ -o $FILE $TEMP extensions/options.cpp extensions/util.cpp $(pkg-config --cflags --libs libns3-dev-ndnSIM-optimized) -Iextensions -I$BASE/include/ns3-dev/ns3/ndnSIM/NFD/daemon -I$BASE/include/ns3-dev/ns3/ndnSIM/ -DMAPME=1 -DANCHOR=1 -DKITE=1 -DFIB_EXTENSIONS=1 -DNDNSIM=1 -std=c++11
+    echo $EXPECTED_HASH > $HASHFILE
+    rm $TEMP
+  fi
+}
+
+function get_simulation_directory()
+{
+  PARAMETERS=$1
+  check_get_directory
+
+  $FILECMD $PARAMETERS --quiet=true
+}
+
+function get_run_directories()
+{
+  while read parameters; do
+      get_simulation_directory "$parameters"
+  done < <(get_run_parameters $1)
+}
+
+function get_all_scenario_directories()
+{
+  # With and withount counts, duplicates...
+  pass
+}
+
+function dir_to_params()
+{
+  echo
+}
+
+function get_scenarios()
+{
+  echo
+}
+
+function get_data_directories()
+{
+  ls $DATA
+}
+
+function parallel_run()
+{
+  EXPERIMENT=$1
+
+  check_get_directory
+
+  # Make sure the code is running
+  ./waf --run "$SCENARIO --output-only" 1>/dev/null 2>&1
+
+  # Run simulations in parallel (Note that the simulation function has been exported)
+  # http://coldattic.info/shvedsky/pro/blogs/a-foo-walks-into-a-bar/posts/7
+  # http://stackoverflow.com/questions/17307800/how-to-run-given-function-in-bash-in-parallel
+  get_todo_run_parameters $EXPERIMENT | xargs -P $MAX_PROCESS -I XXX bash -c "DIR=\$($FILECMD XXX); echo \$DIR; rm -Rf \$DIR; mkdir -p \$DIR; echo \"XXX\" > \${DIR}_params; ./waf --run=\"$SCENARIO --data_path=$DATA_PATH XXX --quiet=true\" >\${DIR}_log 2>&1"
+}
+
+function clear_experiment_data()
+{
+  # TODO : avoid folders used by others, unless --force somehow
+  # currently we remove everything
+  get_scenario_directories $1 | xargs rm -Rf
+
+}
+
+function get_todo_run_parameters()
+{
+  check_get_directory
+
+  while read parameters; do
+    DIR=$($FILECMD $parameters --quiet=true)
+    STATUS=$(get_directory_status $DIR)
+    case $STATUS in
+      STARTED_NO_STATUS)
+        # XXX interrupt it based on pid
+        ;;
+      DONE|RUNNING*)
+        continue
+        ;;
+      *)
+        ;;
+    esac
+    echo $parameters
+  done < <(get_run_parameters $1)
+}
+
+function get_experiment_status()
+{
+  check_get_directory
+
+  while read parameters; do
+    DIR=$($FILECMD $parameters --quiet=true)
+    STATUS=$(get_directory_status $DIR)
+    echo $DIR $STATUS
+  done < <(get_run_parameters $1)
+}
+
+function get_directory_status()
+{
+  DIR=$1
+  if [[ ! -d $DIR ]]; then
+    echo "NOT_STARTED"
+    return
+  fi
+
+  if [[ ! -s $DIR/_status ]]; then
+    echo "STARTED_NO_STATUS"
+    return
+  fi
+
+  COMPLETION=$(cut -d " " -f 4 "$DIR/_status")
+  if [[ $COMPLETION == 100 ]]; then
+    echo "DONE"
+  else
+    PID=$(<$DIR/_pid)
+    kill -0 $PID 2>/dev/null
+    if [[ $? == 0 ]]; then
+      echo "RUNNING_$COMPLETION%"
+
+    else
+      echo -ne "DEAD_"
+      grep "$BUG_WIFI" $DIR/_log 1>/dev/null 2>&1
+      if [[ $? == 0 ]]; then
+        echo "WIFI"
+      else
+        grep "$BUG_MAPME" $DIR/_log 1>/dev/null 2>&1
+        if [[ $? == 0 ]]; then
+          echo "MAPME"
+        else
+          grep "Interrupted" $DIR/_log 1>/dev/null 2>&1
+          if [[ $? == 0 ]]; then
+            echo "INTERRUPTED"
+          else
+            echo "UNKNOWN"
+          fi
+        fi
+      fi
+    fi
+  fi
+
+}
+
+#-------------------------------------------------------------------------------
+# Main
+#-------------------------------------------------------------------------------
+
+case $1 in
+  status)
+    if [[ -z $2 ]]; then
+      echo "Mising SCENARIO"
+      exit 1
+    fi
+    get_experiment_status $2
+    ;;
+  clear)
+    if [[ -z $2 ]]; then
+      echo "Mising SCENARIO"
+      exit 1
+    fi
+    clear_experiment_data $2
+    ;;
+  list)
+    if [[ -z $2 ]]; then
+      echo "Mising SCENARIO"
+      exit 1
+    fi
+    get_scenario_directories $2
+    ;;
+  params)
+    if [[ -z $2 ]]; then
+      echo "Mising SCENARIO"
+      exit 1
+    fi
+    get_scenario_parameters $2
+    ;;
+
+  *)
+    if [[ -z $1 ]]; then
+      echo "Mising parameters: status | SCENARIO"
+      exit 1
+    fi
+    parallel_run $1
+esac

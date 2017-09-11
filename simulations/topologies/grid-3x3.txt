@@ -1,0 +1,72 @@
+# topo-grid-3x3.txt
+
+#   /--------\	    /-\	        /-\
+#   |Consumer|<---->| |<------->| |
+#   \--------/	    \-/	        \-/
+#       ^   	     ^ 	         ^
+#       |            |           |   1Mbps/10ms delay
+#       v            v           v
+#      /-\          /-\         /-\
+#      | |<-------->| |<------->| |
+#      \-/          \-/         \-/
+#       ^   	     ^ 	         ^
+#       |            |           |
+#       v            v           v
+#      /-\	    /-\	     /--------\
+#      | |<-------->| |<---->|Producer|
+#      \-/          \-/      \--------/
+
+# any empty lines and lines starting with '#' symbol is ignored
+#
+# The file should contain exactly two sections: router and link, each starting with the corresponding keyword
+#
+# router section defines topology nodes and their relative positions (e.g., to use in visualizer)
+router
+
+# each line in this section represents one router and should have the following data
+# node  comment     yPos    xPos
+Node0   NA          4       2
+Node1   NA          4       3
+Node2   NA          4       4
+Node3   NA          3       2
+Node4   NA          3       3
+Node5   NA          3       4
+Node6   NA          2       2
+Node7   NA          2       3
+Node8   NA          2       4
+
+NodeP1  NA          5       4
+NodeP2  NA          4       5
+NodeC1  NA          5       1
+NodeC2  NA          1       1
+NodeC3  NA          1       5
+
+# Note that `node` can be any string. It is possible to access to the node by name using Names::Find, see examples.
+
+# link section defines point-to-point links between nodes and characteristics of these links
+link
+
+# Each line should be in the following format (only first two are required, the rest can be omitted)
+# srcNode   dstNode     bandwidth   metric  delay   queue
+# bandwidth: link bandwidth
+# metric: routing metric
+# delay:  link delay
+# queue:  MaxPackets for transmission queue on the link (both directions)
+Node0       Node1       10Mbps       1       10ms    10
+Node0       Node3       10Mbps       1       10ms    10
+Node1       Node2       10Mbps       1       10ms    10
+Node1       Node4       10Mbps       1       10ms    10
+Node2       Node5       10Mbps       1       10ms    10
+Node3       Node4       10Mbps       1       10ms    10
+Node3       Node6       10Mbps       1       10ms    10
+Node4       Node5       10Mbps       1       10ms    10
+Node4       Node7       10Mbps       1       10ms    10
+Node5       Node8       10Mbps       1       10ms    10
+Node6       Node7       10Mbps       1       10ms    10
+Node7       Node8       10Mbps       1       10ms    10
+
+Node2       NodeP1      10Mbps      1       10ms    10
+Node2       NodeP2      10Mbps      1       10ms    10
+Node0       NodeC1      10Mbps      1       10ms    10
+Node6       NodeC2      10Mbps      1       10ms    10
+Node8       NodeC3      10Mbps      1       10ms    10

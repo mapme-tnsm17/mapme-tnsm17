@@ -1,0 +1,16 @@
+<pattern id="gr" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+  <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:#00b0f5;" />
+</pattern>
+
+<pattern id="anchor" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+  <rect x="0" y="0" width="10" height="4" style="stroke:none; fill:#f87368;" />
+  <rect x="3" y="3" width="4" height="10" style="stroke:none; fill:#f87368;" />
+</pattern>
+
+<pattern id="kite" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)">
+  <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:#a1a100;" />
+</pattern>
+
+<pattern id="mapme-iu" x="0" y="0" width="11" height="11" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+ <circle cx="5" cy="5" r="4" style="stroke-width:2; stroke:#e666f3; fill:none;" />
+</pattern>

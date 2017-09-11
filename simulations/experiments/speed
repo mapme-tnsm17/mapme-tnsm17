@@ -1,0 +1,35 @@
+# Impact of load
+RUNS=10
+
+duration 10000
+capacity 10000000
+buffer_size 10000
+delay 5
+#cell_size
+
+rho 0
+#rho 0.1 0.25 0.75 0.9
+rho_fraction_out 0
+rho_fraction_elastic 0
+
+num_permanent_streaming 1
+num_permanent_elastic 0
+num_cp_couples 5
+
+# chunk_size DEFAULT
+
+# sigma NA
+
+streaming_rate 1000000
+#streaming_duration 30 DEFAULT
+
+#alpha DEFAULT # DEFAULT NO IMPACT
+#catalog_size # DEFAULT NO IMPACT
+#cs_fraction # DEFAULT NO IMPACT
+
+topology fat-tree
+mobility_model rwp
+mobility_scheme gr anchor mapme mapme-iu kite
+speed 1 2 5 10 15
+
+#tu DEFAULT

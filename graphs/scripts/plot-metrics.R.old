@@ -1,0 +1,126 @@
+#!/usr/bin/env Rscript
+library(ggplot2)
+library(RSvgDevice)
+
+file_list <- list.files(path='results', pattern = "rocketfuel-.*-r0\\.cch", full.names=TRUE)
+
+for (file in file_list){
+
+  print(file) 
+  # if the merged dataset doesn't exist, create it
+  temp_dfm <- read.table(file, header=TRUE, sep="")
+  if (!exists("dfm")){
+    dfm <- temp_dfm
+  } else {
+    dfm<-rbind(dfm, temp_dfm)
+  }
+  rm(temp_dfm)
+ 
+}
+#DUPLICATE| for (i in c("anchor", "kite", "ours")) {
+#DUPLICATE|     for (j in c("stretch", "path_len", "sp_len")) {
+#DUPLICATE|         fn <- paste("plots/", j, "-", i, "-r0.svg", sep='')
+#DUPLICATE|         if (file.exists(fn))
+#DUPLICATE|             next
+#DUPLICATE|         print(paste(" -", i, "/", j, "->", fn))
+#DUPLICATE| 
+#DUPLICATE|         subdfm <- subset(dfm, metric==j & method==i)
+#DUPLICATE|         g <- ggplot(data=subdfm, aes(x=movement, y=mean, color=name, group=name)) + geom_line(aes(linetype=name), size=1) + geom_errorbar(aes(ymax=max, ymin=min), data=subdfm) + scale_x_log10() + theme_bw()
+#DUPLICATE| 
+#DUPLICATE|         print(paste("->", fn))
+#DUPLICATE|         devSVG(file=fn)
+#DUPLICATE|         print(g)
+#DUPLICATE|         dev.off()
+#DUPLICATE|     }
+#DUPLICATE| }
+
+#tmp <- read.csv("stretch.out", sep="", header=TRUE)
+dfm$method <- as.factor(dfm$method)
+dfm$max <- dfm$mean + dfm$ci
+dfm$min <- dfm$mean - dfm$ci
+
+dfm$name <- as.factor(dfm$name)
+levels(dfm$name)
+for (i in c("1221", "1239", "1755", "2914", "3257", "3356", "3967", "4755", "6461", "7018")) {
+    levels(dfm$name)[levels(dfm$name)==paste("rocketfuel-", i, "-r0.cch", sep="")] <- i
+}
+levels(dfm$name)
+summary(dfm)
+
+print("Evolution wrt mobility")
+
+for (i in c("anchor", "kite", "ours")) {
+    for (j in c("stretch")) { #, "path_len", "sp_len")) {
+        fn <- paste("plots/", j, "-", i, "-r0.svg", sep='')
+        if (file.exists(fn))
+            next
+        print(paste(" -", i, "/", j, "->", fn))
+
+        subdfm <- subset(dfm, metric==j & method==i & movement <= 100)
+        g <- ggplot(data=subdfm, aes(x=movement, y=mean, color=name, group=name)) + geom_line(aes(linetype=name), size=1) + scale_x_log10() + theme_bw() + ylim(0,6) + theme(text = element_text(size=20))
+        if (i == "ours") {
+            #g <- g + geom_errorbar(aes(ymax=max, ymin=min), data=subdfm)
+        }
+
+        print(paste("->", fn))
+        devSVG(file=fn)
+        print(g)
+        dev.off()
+    }
+}
+
+# ZOOM
+
+for (i in c("anchor", "kite", "ours")) {
+    for (j in c("stretch", "path_len", "sp_len")) {
+        fn <- paste("plots/", j, "-", i, "-r0-zoom.svg", sep='')
+        if (file.exists(fn))
+            next
+        print(paste(" -", i, "/", j, "->", fn))
+
+        subdfm <- subset(dfm, metric==j & method==i & movement <= 10)
+        #g <- ggplot(data=subdfm, aes(x=movement, y=mean, color=name, group=name)) + geom_line(aes(linetype=name), size=1) + geom_errorbar(aes(ymax=max, ymin=min), data=subdfm) + scale_x_discrete(limits=c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")) + theme_bw()
+        g <- ggplot(data=subdfm, aes(x=movement, y=mean, color=name, group=name)) + geom_line(aes(linetype=name), size=1) + geom_errorbar(aes(ymax=max, ymin=min), data=subdfm) + theme_bw()
+
+        print(paste("->", fn))
+        devSVG(file=fn)
+        print(g)
+        dev.off()
+    }
+}
+
+# Comparison of approaches
+
+print("Comparison of approaches")
+
+for (i in c("stretch", "path_len", "sp_len")) {
+    fn <- paste("plots/", i, ".svg", sep='')
+    if (file.exists(fn))
+        next
+    print(paste(" -", i, "->", fn))
+
+    subdfm <- subset(dfm, metric==i & ((method=="ours" & movement==1000) | (method!="ours" & movement==1)))
+    g <- qplot(x=name, y=mean, fill=method, data=subdfm, geom="bar", stat="identity", position="dodge") + 
+        geom_errorbar(aes(ymax=max, ymin=min), position=position_dodge(0.9), data=subdfm) + theme_bw()
+
+    devSVG(file=fn)
+    print(g)
+    dev.off()
+}
+
+for (mvt in c(1,2,3,4,5)) {
+    for (i in c("stretch", "path_len", "sp_len")) {
+        fn <- paste("plots/", i, "-", mvt, "mvt.svg", sep='')
+        if (file.exists(fn))
+            next
+        print(paste(" -", i, "->", fn))
+
+        subdfm <- subset(dfm, metric==i & movement==mvt) 
+        g <- qplot(x=name, y=mean, fill=method, data=subdfm, geom="bar", stat="identity", position="dodge") + 
+            geom_errorbar(aes(ymax=max, ymin=min), position=position_dodge(0.9), data=subdfm) + theme_bw()
+
+        devSVG(file=fn)
+        print(g)
+        dev.off()
+    }
+}

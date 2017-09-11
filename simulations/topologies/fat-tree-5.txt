@@ -1,0 +1,68 @@
+# topo-fat-tree-2x3.txt
+
+# any empty lines and lines starting with '#' symbol is ignored
+#
+# The file should contain exactly two sections: router and link, each starting with the corresponding keyword
+#
+# router section defines topology nodes and their relative positions (e.g., to use in visualizer)
+router
+
+# node  comment     yPos    xPos
+Root    NA          5       6
+Top1    NA          4       5
+Top2    NA          4       7
+Mid1    NA          3       4
+Mid2    NA          3       6
+Mid3    NA          3       8
+Bottom1 NA          2       2
+Bottom2 NA          2       4
+Bottom3 NA          2       6
+Bottom4 NA          2       8
+Bottom5 NA          2       10
+
+NodeP1  NA          6       5
+NodeP2  NA          6       7
+NodeC1  NA          1       2
+NodeC2  NA          1       6
+NodeC3  NA          1       10
+
+# Note that `node` can be any string. It is possible to access to the node by name using Names::Find, see examples.
+
+# link section defines point-to-point links between nodes and characteristics of these links
+link
+
+# Each line should be in the following format (only first two are required, the rest can be omitted)
+# srcNode   dstNode     bandwidth   metric  delay   queue
+# bandwidth: link bandwidth
+# metric: routing metric
+# delay:  link delay
+# queue:  MaxPackets for transmission queue on the link (both directions)
+Root        Top1        10Mbps      1       10ms    100
+Root        Top2        10Mbps      1       10ms    100
+Top1        Mid1        10Mbps      1       10ms    100
+Top1        Mid2        10Mbps      1       10ms    100
+Top1        Mid3        10Mbps      1       10ms    100
+Top2        Mid1        10Mbps      1       10ms    100
+Top2        Mid2        10Mbps      1       10ms    100
+Top2        Mid3        10Mbps      1       10ms    100
+Mid1        Bottom1     10Mbps      1       10ms    100
+Mid1        Bottom2     10Mbps      1       10ms    100
+Mid1        Bottom3     10Mbps      1       10ms    100
+Mid1        Bottom4     10Mbps      1       10ms    100
+Mid1        Bottom5     10Mbps      1       10ms    100
+Mid2        Bottom1     10Mbps      1       10ms    100
+Mid2        Bottom2     10Mbps      1       10ms    100
+Mid2        Bottom3     10Mbps      1       10ms    100
+Mid2        Bottom4     10Mbps      1       10ms    100
+Mid2        Bottom5     10Mbps      1       10ms    100
+Mid3        Bottom1     10Mbps      1       10ms    100
+Mid3        Bottom2     10Mbps      1       10ms    100
+Mid3        Bottom3     10Mbps      1       10ms    100
+Mid3        Bottom4     10Mbps      1       10ms    100
+Mid3        Bottom5     10Mbps      1       10ms    100
+
+NodeP1      Root        10Mbps      1       10ms    100
+NodeP2      Root        10Mbps      1       10ms    100
+NodeC1      Bottom1     10Mbps      1       10ms    100
+NodeC2      Bottom3     10Mbps      1       10ms    100
+NodeC3      Bottom5     10Mbps      1       10ms    100

@@ -1,0 +1,32 @@
+The simulator is written in Python. A more efficient alternative would be to
+resort to the Boost Graph Library, but we chose the former due to the
+availability of several helper packages for graph algorithms (netwrkx),
+artificial topology generation and topology parsers (fnss).
+
+SETUP
+=====
+
+./setup.sh deps
+./setup.sh data
+
+SIMULATIONS
+===========
+
+./mobisim.py [optional args: todo]
+
+PLOTS
+=====
+
+./scripts/plot_results.R
+ls plots/*.svg
+
+TOPOLOGY INFORMATION
+====================
+
+Information is plotted during simulation with mobisim.
+
+For original graph information from map files, you can also use the following
+command:
+
+  shopt -s nullglob
+  for i in data/rocketfuel/maps/*.r0.cch; do echo $i; ./scripts/rocketfuel-info.py $i; done
