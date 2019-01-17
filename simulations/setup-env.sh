@@ -62,8 +62,8 @@ DEPS="git r-base-core"
 NS3CONFIG=""
 #--enable-examples --enable-tests"
 
-#GITHUB_CLONE_HEADER="https://github.com"
-GITHUB_CLONE_HEADER="git@github.com:"
+GITHUB_CLONE_HEADER="https://github.com/"
+#GITHUB_CLONE_HEADER="git@github.com:"
 
 
 NDNCXX_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/ndn-cxx.git"
@@ -73,22 +73,24 @@ NDNCXX_DIR=""
 NDNCXX_DEPS="libsqlite3-dev libcrypto++-dev libboost-all-dev"
 
 NFD_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/NFD.git"
-NFD_BRANCH="tnsm17"
+NFD_BRANCH="master"
 NFD_DIR_TMP="NFD"
 NFD_DIR=""
 NFD_DEPS="libsqlite3-dev libcrypto++-dev libboost-all-dev"
 
 PBG_REPO="${GITHUB_CLONE_HEADER}named-data-ndnSIM/pybindgen.git"
 PBG_DIR="pybindgen"
-PBG_DEPS="gccxml"
+PBG_DEPS=""
+#PBG_DEPS="gccxml"
 
 NS3_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/ns-3.git"
-NS3_BRANCH="tnsm17"
+NS3_BRANCH="master"
 NS3_DIR="ns-3"
-NS3_DEPS="python-pygoocanvas python-pygraphviz python-pygccxml"
+NS3_DEPS="python-pygraphviz python-pygccxml"
+#NS3_DEPS="python-pygoocanvas python-pygraphviz python-pygccxml"
 
 NDNSIM_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/ndnsim.git"
-NDNSIM_BRANCH="tnsm17"
+NDNSIM_BRANCH="master"
 NDNSIM_DIR="$NS3_DIR/src/ndnSIM"
 
 SIM_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/mapme-tnsm17.git"
@@ -107,7 +109,6 @@ function help
     echo "Usage: $0 COMMAND [ARGUMENTS...]"
     echo ""
     echo "Available commands:"
-    echo "  full"
     echo "  ndnsim"
     echo "  deps"
     echo "  simulations"
@@ -348,12 +349,6 @@ EOF
 }
 
 case $1 in
-#    full)
-#        install-ndn-cxx
-#        install-pybindgen
-#        install-ns3-ndnsim
-#        install-ndn-simulations
-#        ;;
     gitinfo)
         LOCAL=$(git rev-parse @)
         REMOTE=$(git rev-parse @{u})
