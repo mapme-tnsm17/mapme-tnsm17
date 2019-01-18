@@ -17,7 +17,7 @@ DEFAULT_RUNS=1
 
 MAX_PROCESS=$(grep -c ^processor /proc/cpuinfo)
 
-FILE="tmp/get_directory"
+FILE="/tmp/get_directory"
 FILECMD="$FILE --quiet=true"
 
 #-------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ function get_scenario_parameters()
     done
 #XXX#    unset 'map_defaults[$k]'
 
-  done < $EXPERIMENT
+  done < experiments/$EXPERIMENT
 
 #XXX#  for key in "${!map_defaults[@]}"; do
 #XXX#    for output in "${output[@]}"; do
@@ -238,7 +238,7 @@ main(int argc, char* argv[])
 }
 '''
   HASHFILE="$FILE.md5"
-  EXPECTED_HASH=$(echo $SNIPPET | md5sum | cut -d " " -f 1)
+  EXPECTED_HASH=$(echo "$SNIPPET" | md5sum | cut -d " " -f 1)
 
   [[ -s $HASHFILE ]] && [[ -s $FILE ]] && HASH=$(<$HASHFILE)
   if [[ "$HASH" != "$EXPECTED_HASH" ]]; then

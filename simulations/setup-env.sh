@@ -80,14 +80,12 @@ NFD_DEPS="libsqlite3-dev libcrypto++-dev libboost-all-dev"
 
 PBG_REPO="${GITHUB_CLONE_HEADER}named-data-ndnSIM/pybindgen.git"
 PBG_DIR="pybindgen"
-PBG_DEPS=""
-#PBG_DEPS="gccxml"
+PBG_DEPS="gccxml"
 
 NS3_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/ns-3.git"
 NS3_BRANCH="master"
 NS3_DIR="ns-3"
-NS3_DEPS="python-pygraphviz python-pygccxml"
-#NS3_DEPS="python-pygoocanvas python-pygraphviz python-pygccxml"
+NS3_DEPS="python-pygoocanvas python-pygraphviz python-pygccxml"
 
 NDNSIM_REPO="${GITHUB_CLONE_HEADER}mapme-tnsm17/ndnsim.git"
 NDNSIM_BRANCH="master"
